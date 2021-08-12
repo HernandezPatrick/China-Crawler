@@ -11,4 +11,5 @@ The output CSV contains the following fields about each IP infringement case:
 
 This program uses Firefox, geckodriver, and the Selenium and bs4 Python libraries.
 
-[See here for an example of the output from Aug 2021.](https://github.com/HernandezPatrick/China-Crawler/files/6978722/Aug_2021_Crawl_Artifacts.zip)
+[See here for an example of the crawled pages from Aug 2021](https://github.com/HernandezPatrick/China-Crawler/files/6978722/Aug_2021_Crawl_Artifacts.zip), and [here for just the CSV/XLSX output.](https://github.com/HernandezPatrick/China-Crawler/files/6978895/output.zip)
+
