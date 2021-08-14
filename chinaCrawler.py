@@ -8,6 +8,7 @@ import os.path as Path
 
 allAnnouncements = []
 itinerary = []
+keyOrder = ['uscc','party','brands','address','pubDate','legalRep','title','file']
 
 def validatePath(path):
     path = Path.normpath(path)
@@ -18,16 +19,16 @@ def validatePath(path):
         sys.exit()
 
 regexGroups = {
-    'party':[re.compile(r"""(当事人|当事人姓名/名称|当  事 人|当事人名称)([：\s ]+)([^\s ]{5,16})"""), 3, re.search],
-    'address':[re.compile(r"""(地址)([： ]+)([^\s ]{5,40})"""), 3, re.search],
-    'uscc':[re.compile(r"""(营业执照/|营业执照|统一社会信用代码|证件号码|)([：\s ]+)([A-Z0-9]{18})"""), 3, re.search],
-    'legalRep':[re.compile(r"""(法定代表人)([： ]+)([^\s 地址]+)"""), 3, re.search],
+    'party':[re.compile(r"""(当事人|当事人姓名/名称|当  事 人|当事人名称)([：\s ]+)([^A-Za-z0-9，：、\n]{5,15})([\s，：、])"""), 3, re.search],
+    'address':[re.compile(r"""(地址|址|住址/地址|址)([：\s]{1,2})([^\s 一，\n：]{5,}([\r\n\s一]{1,}))"""), 3, re.search],
+    'uscc':[re.compile(r"""(9[A-Z0-9]{17})"""), 0, re.search],
+    'legalRep':[re.compile(r"""(法定代表人)([： ]+)([^\s 地址\n\d，一]{2,4})"""), 3, re.search],
     'pubDate':[re.compile(r"""\d{4}-\d{2}-\d{2}"""), 0, re.search],
     'brands':[re.compile(r"""([^a-zA-Z0-9])([a-zA-Z]{4,})([^a-zA-Z0-9])"""), 2, re.findall]
     }
 
 ignore = ['logo','loading','english']
-quitText = 'The crawler encountered a problem with the website. Please try again later.'
+quitText = 'The site is loading too slowly right now- this happens occasionally. Please try again later.'
 
 def waiter(driver, seconds, expath):
     try:
@@ -50,7 +51,7 @@ def parse(html, csvPath):
                 if value[2] == re.search:
                     data = value[2](value[0], cleanedText)
                     if data:
-                        details[key] = data.group(value[1])
+                        details[key] = data.group(value[1]).strip()
                 elif value[2] == re.findall:
                     matchesList = [i[1].lower() for i in value[2](value[0], cleanedText)]
                     if matchesList:
@@ -62,7 +63,6 @@ def parse(html, csvPath):
 
             with open(Path.join(csvPath, 'parserOutput.csv'), 'a', newline='', encoding='utf-8') as file:
                 myWriter = csv.writer(file, dialect='excel', delimiter='|')
-                keyOrder = ['uscc','party','brands','address','pubDate','legalRep','title','file']
                 myWriter.writerow(details.get(i,'') for i in keyOrder)
                 file.close()
         else:
@@ -103,9 +103,10 @@ def start(path, firstPage=1):
             print(quitText)
             sys.exit()
         print(f"The website has {lastPage} total pages. The next time you run this crawler, you can set the optional firstPage argument to {int(lastPage) + 1} to crawl from where you left off.")
-        for i in range(firstPage, (int(lastPage) + 1)):
+        saveAnnouncementsList(driver, path)
+        
+        for i in range(firstPage + 1, (int(lastPage) + 1)):
             itinerary.append(base + str(i) + end)
-
         for url in itinerary:
             driver.get(url)
             try:
@@ -120,13 +121,24 @@ def start(path, firstPage=1):
 
 def runParser(path):
     validatePath(path)
+    with open(Path.join(path, 'parserOutput.csv'), 'w', newline='', encoding='utf-8') as file:
+        myWriter = csv.DictWriter(file, dialect='excel', delimiter='|', fieldnames=keyOrder)
+        myWriter.writeheader()
+        file.close()
     for root, dirs, files in os.walk(path):
         for name in files:
             if '.html' in name:
                 betterPath = Path.normpath(Path.join(root, name))
                 parse(betterPath, path)
 
-directory = ''
+if len(sys.argv) == 2:
+    start(sys.argv[1])
+    runParser(sys.argv[1])
+elif len(sys.argv) == 3:
+    if sys.argv[2] == 'parse':
+        runParser(sys.argv[1])
+    else:
+        start(sys.argv[1], int(sys.argv[2]))
+        runParser(sys.argv[1])
 
-start(directory)
-runParser(directory)
+# To run without CLI commands, use start() to crawl the site and runParser() to parse collected HTMLs.
